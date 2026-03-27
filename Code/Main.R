@@ -1,0 +1,314 @@
+# ==============================================================================
+# Computational Methods in Economics - Problem Set 3
+# Author: Georges Mikhael Andraus
+# Description: Optimization, Numerical Integration, and Differentiation.
+# ==============================================================================
+
+# ==============================================================================
+# 1. Setup and Packages
+# ==============================================================================
+library(tidyverse)
+library(patchwork)
+library(statmod)
+
+# Set seed for reproducibility
+set.seed(12345)
+
+# Ensure output directories exist
+dir.create("Output/Figures", showWarnings = FALSE, recursive = TRUE)
+dir.create("Output/Tables", showWarnings = FALSE, recursive = TRUE)
+
+# ==============================================================================
+# Question 1
+# ==============================================================================
+cat("\n--- Question 1 ---\n")
+
+# Define the function
+f_q1 <- function(x) {
+  return(x * sin(5 * x))
+}
+
+# a & b) Optimize using different methods and starting points
+# Method 1: Brent 
+opt_brent <- optimize(f_q1, interval = c(0, 10), tol = 1e-4)
+
+# Method 2: Nelder-Mead
+opt_nm_0 <- optim(par = 0, fn = f_q1, method = "Nelder-Mead", 
+                  control = list(reltol = 1e-4))
+opt_nm_2 <- optim(par = 2, fn = f_q1, method = "Nelder-Mead", 
+                  control = list(reltol = 1e-4))
+opt_nm_5 <- optim(par = 5, fn = f_q1, method = "Nelder-Mead", 
+                  control = list(reltol = 1e-4))
+opt_nm_8 <- optim(par = 8, fn = f_q1, method = "Nelder-Mead", 
+                  control = list(reltol = 1e-4))
+
+# Method 3: L-BFGS-B
+opt_bfgs_0 <- optim(par = 0, fn = f_q1, method = "L-BFGS-B", 
+                    lower = 0, upper = 10, control = list(factr = 1e-4))
+opt_bfgs_2 <- optim(par = 2, fn = f_q1, method = "L-BFGS-B", 
+                    lower = 0, upper = 10, control = list(factr = 1e-4))
+opt_bfgs_5 <- optim(par = 5, fn = f_q1, method = "L-BFGS-B", 
+                    lower = 0, upper = 10, control = list(factr = 1e-4))
+opt_bfgs_8 <- optim(par = 8, fn = f_q1, method = "L-BFGS-B", 
+                    lower = 0, upper = 10, control = list(factr = 1e-4))
+
+cat("Brent (Bounds [0,10]): x* =", opt_brent$minimum, "| f(x*) =", 
+    opt_brent$objective, "\n")
+cat("Nelder-Mead (Start 0): x* =", opt_nm_0$par, "| f(x*) =", 
+    opt_nm_0$value, "\n")
+cat("Nelder-Mead (Start 2): x* =", opt_nm_2$par, "| f(x*) =", 
+    opt_nm_2$value, "\n")
+cat("Nelder-Mead (Start 5): x* =", opt_nm_5$par, "| f(x*) =", 
+    opt_nm_5$value, "\n")
+cat("Nelder-Mead (Start 8): x* =", opt_nm_8$par, "| f(x*) =", 
+    opt_nm_8$value, "\n")
+cat("L-BFGS-B    (Start 0): x* =", opt_bfgs_0$par, "| f(x*) =", 
+    opt_bfgs_0$value, "\n")
+cat("L-BFGS-B    (Start 2): x* =", opt_bfgs_2$par, "| f(x*) =", 
+    opt_bfgs_2$value, "\n")
+cat("L-BFGS-B    (Start 5): x* =", opt_bfgs_5$par, "| f(x*) =", 
+    opt_bfgs_5$value, "\n")
+cat("L-BFGS-B    (Start 8): x* =", opt_bfgs_8$par, "| f(x*) =", 
+    opt_bfgs_8$value, "\n")
+
+# ==============================================================================
+# Question 2
+# ==============================================================================
+cat("\n--- Question 2 ---\n")
+
+# True data given in the problem
+data_q2 <- data.frame(
+  x1 = c(1, 2, -1, 2),
+  x2 = c(1, 4, 2, -2),
+  y  = c(43.614, 563.694, 43.230, 23.130)
+)
+
+# Base function f(x1, x2; theta)
+f_model <- function(x1, x2, theta) {
+  # Ensuring theta has exactly 4 elements
+  stopifnot("Theta must be a vector of length 4" = length(theta) == 4)
+  
+  t1 <- theta[1]; t2 <- theta[2]; t3 <- theta[3]; t4 <- theta[4]
+  return(t1 * x1 + t2 * exp(-x2^2) + t3 * log(1 + abs(x2)) + t4 * x1^x2)
+}
+
+# a) Create the objective function g(theta) 
+g_q2 <- function(theta) {
+  sq_errors <- numeric(nrow(data_q2))
+  for (i in 1:nrow(data_q2)) {
+    y_hat <- f_model(data_q2$x1[i], data_q2$x2[i], theta)
+    sq_errors[i] <- (y_hat - data_q2$y[i])^2
+  }
+  return(sum(sq_errors))
+}
+
+# b) Value of g(0,0,0,0)
+g_zero <- g_q2(c(0, 0, 0, 0))
+cat("b) g(0,0,0,0) =", g_zero, "\n")
+
+# c & d) Optimization with Trace
+# I store traces with the wrapper function
+make_traced_objective <- function(obj_func) {
+  history <- list() # Stores iterations internally
+  iter <- 0
+  
+  wrapper <- function(theta) {
+    val <- obj_func(theta)
+    iter <<- iter + 1
+    # Save the current state
+    history[[iter]] <<- c(Iteration = iter, g_val = val, Theta1 = theta[1], 
+                          Theta2 = theta[2], Theta3 = theta[3], Theta4 = theta[4])
+    return(val)
+  }
+  
+  # Return a list containing the wrapper function and a function to extract the history
+  list(
+    fn = wrapper,
+    get_history = function() { do.call(rbind, history) %>% as.data.frame() }
+  )
+}
+
+# Instantiate the tracked objective
+traced_g <- make_traced_objective(g_q2)
+
+# Run optimization (using BFGS)
+# Initial guess: c(1,1,1,1) to avoid a trap.
+opt_q2 <- optim(par = c(1, 1, 1, 1), fn = traced_g$fn, method = "BFGS", 
+                control = list(maxit = 5000, reltol = 1e-8))
+
+# Extract the tracked history
+trace_df <- traced_g$get_history()
+
+# Plotting d)
+p_obj <- ggplot(trace_df, aes(x = Iteration, y = g_val)) +
+  geom_line(color = "darkred", linewidth = 1) +
+  scale_y_log10() + # Log scale 
+  labs(title = "Objective Function g(θ) vs Iteration", y = "g(θ) [Log Scale]") + theme_minimal()
+
+# Reshape data to plot the 4 parameters easily
+trace_long <- trace_df %>%
+  pivot_longer(cols = starts_with("Theta"), 
+               names_to = "Parameter", values_to = "Value")
+
+p_params <- ggplot(trace_long, aes(x = Iteration, y = Value, color = Parameter)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~Parameter, scales = "free_y") +
+  labs(title = "Parameter Estimates vs Iteration") +
+  theme_minimal() + theme(legend.position = "none")
+
+# Combine plots using patchwork and save
+p_combined <- p_obj / p_params
+ggsave("Output/Figures/q2_optimization_trace.png", 
+       p_combined, width = 8, height = 7, dpi = 300)
+
+# e) Final estimates and iterations
+cat("e) Estimated Theta:", opt_q2$par, "\n")
+cat("   Final g(theta) value:", opt_q2$value, "\n")
+cat("   Iterations required:", nrow(trace_df), "\n")
+cat("   Plots saved to Output/Figures/q2_optimization_trace.png\n")
+
+# ==============================================================================
+# Question 3
+# ==============================================================================
+cat("\n--- Question 3 ---\n")
+
+# Analytical true value is 1/sqrt(pi) approx 0.5641896
+
+# 3.1 Gauss-Hermite Quadrature
+# For a standard normal, we can use statmod's probability quadrature directly
+n_nodes_gh <- 15
+gh_rules <- gauss.quad.prob(n_nodes_gh, dist = "normal")
+nodes <- gh_rules$nodes
+weights <- gh_rules$weights
+
+# Since X and Y are independent, the joint expectation is the double sum:
+# E[max(X,Y)] = sum_i sum_j w_i * w_j * max(nodes_i, nodes_j)
+expected_u_gh <- 0
+for (i in seq_along(nodes)) {
+  for (j in seq_along(nodes)) {
+    expected_u_gh <- expected_u_gh + weights[i] * weights[j] * max(nodes[i], nodes[j])
+  }
+}
+
+# 3.2 Monte Carlo Integration
+M_sims <- 1000000 # 1 million draws
+x_mc <- rnorm(M_sims)
+y_mc <- rnorm(M_sims)
+
+# Vectorized element-wise maximum using pmax (it is faster than a loop)
+expected_u_mc <- mean(pmax(x_mc, y_mc))
+
+cat("Gauss-Hermite (15 nodes):", expected_u_gh, "\n")
+cat("Monte Carlo (1M draws):  ", expected_u_mc, "\n")
+cat("Analytical True Value:   ", 1/sqrt(pi), "\n")
+
+# ==============================================================================
+# Question 4
+# ==============================================================================
+cat("\n--- Question 4 ---\n")
+
+# Defensive implementation of the Trapezoidal rule
+trapezoid_rule <- function(f, a, b, n) {
+  # n must be at least 2 to form 1 interval
+  stopifnot("Number of nodes 'n' must be at least 2" = n >= 2)
+  
+  x <- seq(a, b, length.out = n)
+  y <- f(x)
+  h <- (b - a) / (n - 1)
+  
+  # Trapezoidal formula: h/2 * (f(x1) + 2*f(x2) + ... + 2*f(xn-1) + f(xn))
+  integral <- (h / 2) * (y[1] + 2 * sum(y[2:(n - 1)]) + y[n])
+  return(integral)
+}
+
+# Define the functions to integrate over [0,1]
+f_a <- function(x) x
+f_b <- function(x) x * sin(x)
+f_c <- function(x) sqrt(1 - x^2)
+
+nodes_seq <- c(3, 5, 10, 15, 20)
+
+# Evaluate over all nodes using purrr to build a clean table
+results_q4 <- map_dfr(nodes_seq, function(n) {
+  data.frame(
+    Nodes = n,
+    Integral_a = trapezoid_rule(f_a, 0, 1, n),
+    Integral_b = trapezoid_rule(f_b, 0, 1, n),
+    Integral_c = trapezoid_rule(f_c, 0, 1, n)
+  )
+})
+
+# Add True values for comparison (analytical solution)
+true_a <- 0.5
+true_b <- sin(1) - cos(1)
+true_c <- pi / 4
+
+cat("Trapezoidal Rule Results:\n")
+print(results_q4)
+cat("\nTrue Values -> a:", true_a, "| b:", true_b, "| c:", true_c, "\n")
+
+# Save as a formatted LaTeX table
+library(stargazer)
+stargazer(results_q4, type = "latex", summary = FALSE, rownames = FALSE,
+          title = "Trapezoidal Rule Integration across Nodes",
+          digits = 5,
+          out = "Output/Tables/q4_trapezoidal.tex",
+          float = FALSE)
+
+# ==============================================================================
+# Question 5
+# ==============================================================================
+cat("\n--- Question 5 ---\n")
+
+# A generalized defensive finite difference function
+centered_difference <- function(f, x, h, points = 2) {
+  # Defensive checks to ensure valid arguments
+  stopifnot("h must be strictly positive" = h > 0)
+  stopifnot("points must be 2 or 4" = points %in% c(2, 4))
+  
+  if (points == 2) {
+    # 2-point formula: [f(x+h) - f(x-h)] / 2h
+    return((f(x + h) - f(x - h)) / (2 * h))
+  } else if (points == 4) {
+    # 4-point formula: [ -f(x+2h) + 8f(x+h) - 8f(x-h) + f(x-2h) ] / 12h
+    return((-f(x + 2 * h) + 8 * f(x + h) - 8 * f(x - h) + f(x - 2 * h)) / (12 * h))
+  }
+}
+
+# Target functions
+diff_f_a <- function(x) x^2
+diff_f_b <- function(x) log(x)
+diff_f_c <- function(x) x * sin(x)
+
+# True analytical derivatives for comparison
+true_a_prime <- 2 * 5 # 10
+true_b_prime <- 1 / 10 # 0.1
+true_c_prime <- sin(1) + 1 * cos(1) # approx 1.38177329
+
+h_steps <- c(0.05, 0.01, 0.005, 0.001)
+
+# Loop to create a structured table of computed derivatives
+results_q5 <- map_dfr(h_steps, function(h_val) {
+  data.frame(
+    Step = h_val,
+    'a(2pt)' = centered_difference(diff_f_a, 5, h_val, 2),
+    'a(4pt)' = centered_difference(diff_f_a, 5, h_val, 4),
+    'b(2pt)' = centered_difference(diff_f_b, 10, h_val, 2),
+    'b(4pt)' = centered_difference(diff_f_b, 10, h_val, 4),
+    'c(2pt)' = centered_difference(diff_f_c, 1, h_val, 2),
+    'c(4pt)' = centered_difference(diff_f_c, 1, h_val, 4)
+  )
+})
+
+cat("Finite Differences Computed Derivatives:\n")
+print(results_q5)
+cat("\nAnalytical True Values:\n")
+cat("a:", true_a_prime, "| b:", true_b_prime, "| c:", true_c_prime, "\n")
+
+# Export the table to LaTeX
+library(stargazer)
+stargazer(results_q5, type = "latex", summary = FALSE, rownames = FALSE,
+          title = "Computed Numerical Derivatives via Finite Differences",
+          digits = 8,
+          out = "Output/Tables/q5_differentiation.tex",
+          float = FALSE)
