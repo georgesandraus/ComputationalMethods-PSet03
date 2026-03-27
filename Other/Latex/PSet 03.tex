@@ -1,0 +1,140 @@
+\documentclass[11pt]{article}
+\usepackage[top = 2.5cm, bottom = 2.5cm, left = 2.5cm, right = 2.5cm]{geometry} 
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{changepage}
+\usepackage{multirow}
+\usepackage{booktabs} 
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{enumitem}
+\usepackage{float} 
+\usepackage{amsmath,amsfonts,amssymb,mathtools}
+\numberwithin{equation}{section}
+\numberwithin{figure}{section}
+\usepackage[dvipsnames,hyperref]{xcolor} 
+\usepackage{fancyhdr}
+\usepackage[section]{placeins} 
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{caption} 
+\usepackage{subfig} 
+\usepackage{siunitx} 
+
+% English settings
+\renewcommand{\contentsname}{Contents}
+\renewcommand{\figurename}{Figure}
+\renewcommand{\tablename}{Table} 
+
+\hypersetup{
+    colorlinks,
+    linkcolor={blue!60!black}, 
+    citecolor={blue!60!black},
+    urlcolor={blue!80!black}
+}
+\titlelabel{\thetitle.\quad} 
+\definecolor{coolblack}{rgb}{0.0, 0.12, 0.29} 
+
+% Paths
+\graphicspath{{Output/Figures/}} 
+\setcounter{tocdepth}{2} 
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\footnotesize Computational Methods in Economics}
+\rhead{\footnotesize Georges Mikhael Andraus}
+\cfoot{\footnotesize Page \thepage} 
+
+\usepackage{indentfirst} 
+\linespread{1.3} 
+
+\begin{document}
+\thispagestyle{empty}
+
+% HEADER
+\begin{tabular}{p{9.8cm}p{9cm}}
+{\large \bf São Paulo School of Economics} & \multicolumn{1}{r}{\large \bf Computational Methods}\\ 
+\large{\bf CMCD} & \multicolumn{1}{r}{\large \bf 1st Semester - 2026}\\ 
+\large Professor: Lucas Finamor & \multicolumn{1}{r}{\large Georges Andraus} 
+\\
+\vspace{0.3cm}
+\\
+\end{tabular}
+
+%TITLE
+\begin{tabular}{p{15.5cm}}
+\hline
+\vspace{-0.3cm}
+\center \Large{\textbf{Problem Set 03}} 
+\vspace{0.4cm}
+\hrule
+\vspace{0.55cm}
+\end{tabular}
+
+\vspace{1cm}
+
+\noindent\textit{\textbf{Repository:} \url{https://github.com/georgesandraus/ComputationalMethods-PSet03}}
+
+% AI DECLARATION
+\noindent\textit{\textbf{AI Usage:} Parts of the code and the LaTeX structuring of this project were developed with the help of an LLM (Gemini 3.1 Pro Preview). The AI was primarily used to implement good computational practices (such as writing generic functions, defensive programming to prevent invalid arguments and utilizing R closures to track iterative processes without polluting the global environment). The logic and interpretation are my own.}
+
+\vspace{0.1cm}
+
+%EXERCISES
+\section*{Question 1}
+\begin{enumerate}
+    \item[a-b)] I optimized the function $f(x) = x \sin(5x)$ over the interval $[0,10]$ using Brent, Nelder-Mead, and L-BFGS-B algorithms, testing various starting points ($x_0 \in \{0, 2, 5, 8\}$). Because the function oscillates many times in this interval, it contains several local minima, and the true global minimum is located near the upper bound ($x^* \approx 9.743$, $f(x^*) \approx -9.7409$). 
+    
+    The results show how extremely sensitive local optimizers are to their initial guesses. For instance, starting Nelder-Mead at $x_0=2$ and $x_0=5$ traps the algorithm in the local minima ($x^* \approx 2.21$ and $x^* \approx 4.72$, respectively). When we run the code, R gives a warning that one-dimensional optimization by this method is unreliable, since the "amoeba approach" makes more sense in a multidimensional setting. Interestingly, L-BFGS-B starting at $x_0=2$ takes large steps, jumps across several valleys, and finds the true global minimum, whereas starting it much closer at $x_0=8$ traps it in a local minimum ($x^* \approx 8.48$). 
+    
+    The most critical finding, however, is that Brent's method (that uses the default R \texttt{optimize} function) fails to find the global minimum, getting stuck at $x^* \approx 5.97$. Even though it evaluates the entire specified bracket $[0,10]$, it assumes the function is unimodal to guarantee a global optimum. Since $x \sin(5x)$ is multimodal, Brent  gets trapped in a local minimum. This illustrates the theory: for highly non-convex functions, no single algorithm is foolproof, making it strictly necessary to run multiple algorithms from various starting points (multi-start approach) to avoid reporting local minima as global solutions. 
+\end{enumerate}
+
+\section*{Question 2}
+\begin{enumerate}
+    \item[b)] For the sum of quadratic differences $g(\theta)$, replacing $\theta = (0,0,0,0)$ yields $g(\theta) = 322,056.9$.
+    \item[c-e)] Figure \ref{fig:q2_trace} illustrates the iterative optimization process using the BFGS algorithm. The optimization started at $\theta = (1,1,1,1)$ to avoid stagnation and took exactly 188 iterations to converge. The estimated parameter is $\hat{\theta} \approx (1.800, 2.399, 10.000, 34.000)$, which successfully minimizes the objective function $g(\theta)$ practically to zero ($2.91 \times 10^{-20}$).
+    
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth]{q2_optimization_trace.png}
+        \caption{Trace of BFGS Optimization}
+        \label{fig:q2_trace}
+    \end{figure}
+\end{enumerate}
+
+\section*{Question 3}
+The analytical true value of $E[u]$ is $1/\sqrt{\pi} \approx 0.5641896$.
+\begin{enumerate}
+    \item[1)] Using Gauss-Hermite quadrature with 15 nodes on each dimension, I obtained $E[u] \approx 0.5488$.
+    \item[2)] Using Monte Carlo integration with 1,000,000 simulations, I obtained $E[u] \approx 0.5643$.
+\end{enumerate}
+\textbf{Conclusion:} The Monte Carlo result is highly accurate, while Gauss-Hermite performs worse in this scenario. Gaussian Quadrature relies on polynomials approximating the function; however, $\max\{X,Y\}$ introduces a point where the function is non-differentiable. This makes polynomials a bad fit, increasing the required nodes, where the random sampling in Monte Carlo overcomes this problem.
+
+\section*{Question 4}
+Table \ref{tab:q4} presents the numerical approximations using the generalized Trapezoidal rule algorithm.
+    \begin{table}[H] 
+      \centering 
+      \caption{Trapezoidal Rule Integration} 
+      \label{tab:q4} 
+      \resizebox{0.75\textwidth}{!}{%
+        \input{q4_trapezoidal.tex}
+      }
+    \end{table} 
+For the linear function (Integral A), the trapezoidal rule perfectly matches the true value ($0.5$) with just 3 nodes because trapezoids capture straight lines exactly. For function B, as $n$ increases, the approximation properly converges to the true value ($\approx 0.30117$). For function C (the arc of a circle), the convergence is much slower (it reaches $0.7818$ with 20 nodes, still slightly off the true value of $\pi/4 \approx 0.785$). This slower convergence happens because the derivative of $\sqrt{1-x^2}$ becomes infinite at the bounds.
+
+\section*{Question 5}
+Table \ref{tab:q5} reports the computed numerical derivatives using finite centered differences (with 2-point and 4-point formulas), evaluated over progressively smaller step sizes ($h$).
+    \begin{table}[H] 
+      \centering 
+      \caption{Computed Numerical Derivatives via Finite Differences} 
+      \label{tab:q5} 
+      \resizebox{\textwidth}{!}{%
+        \input{q5_differentiation.tex}
+      }
+    \end{table} 
+\begin{enumerate}
+    \item[d)] The analytical true derivatives evaluated at the respective points are exactly $10$ for function A, $0.1$ for function B, and approximately $1.38177329$ for function C.  Comparing the numerical results with these analytical solutions, it is clear that as the step size $h$ decreases, the approximations converge remarkably well. Also, the 4-point method systematically produces a much higher precision than the 2-point method for the same value of $h$. For Function A (a pure quadratic), the 2-point method (and the 4-point method) finds the exact analytical solution immediately regardless of $h$. These results also basically demonstrate the numerical limit of making $h$ arbitrarily small.
+\end{enumerate}
+
+\end{document}
