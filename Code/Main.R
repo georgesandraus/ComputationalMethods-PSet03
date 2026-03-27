@@ -7,9 +7,14 @@
 # ==============================================================================
 # 1. Setup and Packages
 # ==============================================================================
+# Package management via 'renv'
+if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
+# renv::activate() # Ensures the project-local library is used
+
 library(tidyverse)
 library(patchwork)
 library(statmod)
+library(stargazer)
 
 # Set seed for reproducibility
 set.seed(12345)
